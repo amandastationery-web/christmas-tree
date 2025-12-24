@@ -1,48 +1,44 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
-<title>Christmas Tree Gesture</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Christmas Tree</title>
 
 <style>
 html,body{
-  margin:0;
-  padding:0;
-  overflow:hidden;
-  background:#000;
+  margin:0;padding:0;overflow:hidden;
+  background:#000;color:#d4af37;
   font-family:system-ui,-apple-system;
 }
 #ui{
-  position:fixed;
-  top:10px;
-  left:10px;
-  color:#d4af37;
-  z-index:10;
-  font-size:14px;
+  position:fixed;top:10px;left:10px;
+  z-index:10;font-size:13px
 }
 #video{
-  position:fixed;
-  right:10px;
-  bottom:10px;
-  width:120px;
-  border:1px solid #d4af37;
-  z-index:10;
+  position:fixed;right:10px;bottom:10px;
+  width:110px;border:1px solid #d4af37
 }
-.hidden{display:none;}
+.hidden{display:none}
 </style>
 </head>
 
 <body>
 <div id="ui">
-✊ 聚合圣诞树<br>
-🖐 粒子散开<br>
+✊ 聚合<br>
+🖐 散开<br>
 🤏 聚焦<br>
-✌️ 画廊模式<br>
-H 键隐藏 UI
+✌️ 模式<br>
+🎶 触屏开启音乐<br>
+H 隐藏
 </div>
 
 <video id="video" autoplay playsinline></video>
+
+<!-- 音乐 -->
+<audio id="music" loop>
+  <source src="https://cdn.pixabay.com/download/audio/2022/12/06/audio_3f8fa3c93d.mp3" type="audio/mpeg">
+</audio>
 
 <script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
@@ -51,30 +47,31 @@ H 键隐藏 UI
 <script>
 /* ---------- Three.js ---------- */
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x000000,5,25);
 
 const camera = new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,100);
-camera.position.z = 12;
+camera.position.z = 10;
 
 const renderer = new THREE.WebGLRenderer({
-  alpha:true,
-  antialias:false,
-  powerPreference:"low-power"
+  alpha:true, antialias:false, powerPreference:"low-power"
 });
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+renderer.setPixelRatio(1);
 renderer.setSize(innerWidth,innerHeight);
 document.body.appendChild(renderer.domElement);
 
-/* 灯光 */
-scene.add(new THREE.AmbientLight(0xffd700,0.35));
-const spot = new THREE.SpotLight(0xffffff,1);
-spot.position.set(5,10,5);
-scene.add(spot);
+scene.add(new THREE.AmbientLight(0xffd700,0.8));
 
-/* ---------- 粒子系统 ---------- */
-const COUNT = 1200;
+/* ---------- 粒子圣诞树 ---------- */
+const COUNT = 700;
 const geo = new THREE.BufferGeometry();
-const treePos = [];
-const spreadPos = [];
+const tree = [];
+const spread = [];
 
-for(let i=
+for(let i=0;i<COUNT;i++){
+  const h=Math.random()*5;
+  const r=(5-h)*Math.random()*0.4;
+  const a=Math.random()*Math.PI*2;
+  tree.push(Math.cos(a)*r,h-2.5,Math.sin(a)*r);
+  spread.push((Math.random()-0.5)*7,(Math.random()-0.5)*7,(Math.random()-0.5)*7);
+}
+
+geo.setAttribute("position",new THREE.Floa
