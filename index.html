@@ -1,214 +1,177 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Interactive 3D Christmas Tree</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>3D Christmas Tree</title>
+
 <style>
-  body { margin:0; overflow:hidden; background:#0a0a0a; color:#fff; font-family:sans-serif;}
-  #upload { position: absolute; top: 10px; left: 10px; z-index:10; }
-  #info { position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.5); padding:10px; border-radius:5px; }
-  canvas { display:block; }
+html,body{
+  margin:0;
+  padding:0;
+  overflow:hidden;
+  background:#000;
+  font-family:system-ui,-apple-system;
+}
+#ui{
+  position:fixed;
+  top:10px;
+  left:10px;
+  z-index:10;
+}
+#upload{
+  background:#111;
+  color:#d4af37;
+  border:1px solid #d4af37;
+  padding:8px;
+}
+#video{
+  position:fixed;
+  right:10px;
+  bottom:10px;
+  width:120px;
+  border:1px solid gold;
+  z-index:10;
+}
 </style>
 </head>
+
 <body>
-<input type="file" id="upload" multiple accept="image/*">
-<div id="info">Press H to hide this UI</div>
-<canvas id="canvas"></canvas>
+<div id="ui">
+  <input id="upload" type="file" accept="image/*" multiple />
+</div>
 
-<script type="module">
-// --- Three.js & Postprocessing CDN ---
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/controls/OrbitControls.js';
-import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+<video id="video" autoplay playsinline></video>
 
-// --- Scene ---
-const canvas = document.getElementById('canvas');
+<!-- Three.js -->
+<script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
+
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+<script>
+/* ------------------ Three.js Âú∫ÊôØ ------------------ */
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0a0a);
+scene.fog = new THREE.Fog(0x000000,5,20);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
-camera.position.set(0,2,7);
+const camera = new THREE.PerspectiveCamera(
+  60,
+  window.innerWidth/window.innerHeight,
+  0.1,
+  100
+);
+camera.position.z = 10;
 
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
-renderer.setSize(window.innerWidth, window.innerHeight);
+const renderer = new THREE.WebGLRenderer({
+  alpha:true,
+  antialias:false,
+  powerPreference:"low-power"
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
+renderer.setSize(window.innerWidth,window.innerHeight);
+document.body.appendChild(renderer.domElement);
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
+/* ÁÅØÂÖâ */
+scene.add(new THREE.AmbientLight(0xffd700,0.4));
+const spot = new THREE.SpotLight(0xffffff,1);
+spot.position.set(5,10,5);
+scene.add(spot);
 
-// --- Lighting ---
-const spotLight = new THREE.SpotLight(0xffd700, 2);
-spotLight.position.set(5,10,5);
-scene.add(spotLight);
-scene.add(new THREE.AmbientLight(0x404040,0.5));
-
-// --- Particle Tree ---
-const particleCount = 2000;
-const particleGeometry = new THREE.BufferGeometry();
-const positions = new Float32Array(particleCount*3);
-const targetPositions = new Float32Array(particleCount*3);
-
-// …˙≥… ˜–Œƒø±Í◊¯±Í
-for(let i=0;i<particleCount;i++){
-  let theta = Math.random()*2*Math.PI;
-  let y = Math.random()*4;
-  let radius = 1.5*(1 - y/4); //  ˜◊∂–Œ
-  targetPositions[i*3] = radius*Math.cos(theta);
-  targetPositions[i*3+1] = y;
-  targetPositions[i*3+2] = radius*Math.sin(theta);
-
-  positions[i*3] = (Math.random()-0.5)*10;
-  positions[i*3+1] = (Math.random()-0.5)*10;
-  positions[i*3+2] = (Math.random()-0.5)*10;
+/* Á≤íÂ≠êÂú£ËØûÊ†ë */
+const count = 800;
+const geo = new THREE.BufferGeometry();
+const pos = [];
+for(let i=0;i<count;i++){
+  const h = Math.random()*5;
+  const r = (5-h)*Math.random()*0.4;
+  const a = Math.random()*Math.PI*2;
+  pos.push(Math.cos(a)*r, h-2.5, Math.sin(a)*r);
 }
-particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions,3));
-const particleMaterial = new THREE.PointsMaterial({color:0xffd700,size:0.08});
-const particles = new THREE.Points(particleGeometry, particleMaterial);
-scene.add(particles);
+geo.setAttribute("position", new THREE.Float32BufferAttribute(pos,3));
 
-// --- Decorations: Balls and Boxes ---
-const decoGroup = new THREE.Group();
-scene.add(decoGroup);
-for(let i=0;i<50;i++){
-  const geo = Math.random()<0.5?new THREE.SphereGeometry(0.1,8,8):new THREE.BoxGeometry(0.15,0.15,0.15);
-  const mat = new THREE.MeshStandardMaterial({color:Math.random()<0.5?0xffd700:0x00ff00,metalness:0.8,roughness:0.3});
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.set((Math.random()-0.5)*2, Math.random()*3, (Math.random()-0.5)*2);
-  decoGroup.add(mesh);
-}
+const mat = new THREE.PointsMaterial({
+  color:0xd4af37,
+  size:0.06
+});
+const tree = new THREE.Points(geo,mat);
+scene.add(tree);
 
-// --- Snow Particles ---
-const snowCount = 300;
-const snowGeo = new THREE.BufferGeometry();
-const snowPos = new Float32Array(snowCount*3);
-for(let i=0;i<snowCount*3;i+=3){
-  snowPos[i]=(Math.random()-0.5)*10;
-  snowPos[i+1]=Math.random()*5;
-  snowPos[i+2]=(Math.random()-0.5)*10;
-}
-snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos,3));
-const snowMat = new THREE.PointsMaterial({color:0xffffff,size:0.05});
-const snow = new THREE.Points(snowGeo,snowMat);
-scene.add(snow);
+/* ------------------ ÁÖßÁâá ------------------ */
+const planes = [];
+document.getElementById("upload").addEventListener("change",e=>{
+  planes.forEach(p=>scene.remove(p));
+  planes.length=0;
 
-// --- Photos ---
-let photos = [];
-const photoGroup = new THREE.Group();
-scene.add(photoGroup);
-const maxPhotos = 2;
-document.getElementById('upload').addEventListener('change', e=>{
-  const files = e.target.files;
-  photoGroup.clear();
-  photos = [];
-  for(let i=0;i<Math.min(files.length,maxPhotos);i++){
-    const file = files[i];
-    const url = URL.createObjectURL(file);
-    const texture = new THREE.TextureLoader().load(url);
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(1,1), new THREE.MeshBasicMaterial({map:texture}));
-    plane.position.set((i-0.5)*2,1.5,0);
-    photoGroup.add(plane);
-    photos.push(plane);
+  [...e.target.files].slice(0,2).forEach((file,i)=>{
+    const img = new Image();
+    img.onload=()=>{
+      const tex = new THREE.Texture(img);
+      tex.needsUpdate=true;
+      const m = new THREE.MeshBasicMaterial({map:tex});
+      const g = new THREE.PlaneGeometry(2,2);
+      const p = new THREE.Mesh(g,m);
+      p.position.set(i?2:-2,0,0);
+      scene.add(p);
+      planes.push(p);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+});
+
+/* ------------------ MediaPipe ÊâãÂäø ------------------ */
+const video = document.getElementById("video");
+
+const hands = new Hands({
+  locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+});
+hands.setOptions({
+  maxNumHands:1,
+  minDetectionConfidence:0.6,
+  minTrackingConfidence:0.6
+});
+
+hands.onResults(res=>{
+  if(!res.multiHandLandmarks) return;
+  const lm = res.multiHandLandmarks[0];
+  const d = Math.hypot(
+    lm[4].x-lm[8].x,
+    lm[4].y-lm[8].y
+  );
+
+  // ÁÆÄÂåñÊâãÂäøÂà§Êñ≠
+  if(d < 0.05){
+    camera.position.z = 6; // ÊçèÂêà
+  }else if(lm[8].y < lm[6].y){
+    tree.rotation.y += 0.05; // Âº†ÂºÄ
+  }else{
+    camera.position.z = 10; // Êè°Êã≥
   }
 });
 
-// --- Postprocessing ---
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene,camera));
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth,window.innerHeight),1.5,0.4,0.85);
-composer.addPass(bloomPass);
+setTimeout(()=>{
+  navigator.mediaDevices.getUserMedia({video:true}).then(stream=>{
+    video.srcObject = stream;
+    const cam = new Camera(video,{
+      onFrame:async()=>{await hands.send({image:video});}
+    });
+    cam.start();
+  });
+},1500);
 
-// --- MediaPipe Hands ---
-import { Hands } from 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js';
-import { Camera } from 'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js';
-
-const videoElement = document.createElement('video');
-videoElement.style.display='none';
-document.body.appendChild(videoElement);
-
-const hands = new Hands({locateFile:(file)=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
-hands.setOptions({maxNumHands:1,minDetectionConfidence:0.7,minTrackingConfidence:0.7});
-hands.onResults(onHands);
-const cam = new Camera(videoElement,{onFrame: async()=>{await hands.send({image:videoElement})},width:640,height:480});
-cam.start();
-
-let gesture='';
-function onHands(results){
-  if(!results.multiHandLandmarks||results.multiHandLandmarks.length===0) return;
-  const l = results.multiHandLandmarks[0];
-  const distance = (a,b)=>Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z);
-  const dThumbIndex = distance(l[4],l[8]);
-  const dIndexMiddle = distance(l[8],l[12]);
-  const dMiddleRing = distance(l[12],l[16]);
-  const dRingPinky = distance(l[16],l[20]);
-
-  if(dThumbIndex<0.05 && dMiddleRing<0.05) gesture='pinch';
-  else if(dIndexMiddle>0.1 && dMiddleRing>0.1 && dRingPinky>0.1) gesture='open';
-  else if(dIndexMiddle<0.05 && dMiddleRing<0.05) gesture='fist';
-  else if(dIndexMiddle>0.1 && dMiddleRing<0.1) gesture='scissors';
-  else gesture='';
+/* ------------------ Âä®ÁîªÂæ™ÁéØ ------------------ */
+function animate(){
+  requestAnimationFrame(animate);
+  tree.rotation.y += 0.002;
+  renderer.render(scene,camera);
 }
+animate();
 
-// --- Animate ---
-window.addEventListener('resize', ()=>{
+window.addEventListener("resize",()=>{
   camera.aspect=window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth,window.innerHeight);
-  composer.setSize(window.innerWidth,window.innerHeight);
 });
-window.addEventListener('keydown', e=>{
-  if(e.key.toLowerCase()=='h'){
-    document.getElementById('upload').style.display = 
-    document.getElementById('info').style.display =
-    document.getElementById('upload').style.display=='none'?'block':'none';
-  }
-});
-
-function animate(){
-  requestAnimationFrame(animate);
-
-  // --- Particle Tree ∂Øª≠ ---
-  const pos = particles.geometry.attributes.position.array;
-  for(let i=0;i<pos.length;i+=3){
-    if(gesture==='fist'){ // æ€∫œ≥… •µÆ ˜
-      pos[i] += (targetPositions[i]-pos[i])*0.05;
-      pos[i+1] += (targetPositions[i+1]-pos[i+1])*0.05;
-      pos[i+2] += (targetPositions[i+2]-pos[i+2])*0.05;
-    } else if(gesture==='open'){ // …¢ø™
-      pos[i] += (Math.random()-0.5)*0.1;
-      pos[i+1] += (Math.random()-0.5)*0.1;
-      pos[i+2] += (Math.random()-0.5)*0.1;
-    }
-  }
-  particles.geometry.attributes.position.needsUpdate=true;
-
-  // --- Snow animation ---
-  const snowPosArr = snow.geometry.attributes.position.array;
-  for(let i=0;i<snowPosArr.length;i+=3){
-    snowPosArr[i+1]-=0.02;
-    if(snowPosArr[i+1]<0) snowPosArr[i+1]=5;
-  }
-  snow.geometry.attributes.position.needsUpdate=true;
-
-  // --- Photo Hand Gestures ---
-  if(gesture==='pinch' && photos.length>0){ // æ€Ωπµ•’≈’’∆¨
-    const target = photos[0].position;
-    camera.position.lerp(new THREE.Vector3(target.x,target.y+1.5,target.z+2),0.05);
-    camera.lookAt(target.x,target.y,target.z);
-  } else if(gesture==='scissors' && photos.length>1){ // ª≠¿»ƒ£ Ω
-    const target0 = photos[0].position;
-    const target1 = photos[1].position;
-    photos[0].position.lerp(new THREE.Vector3(-1.5,1.5,0),0.05);
-    photos[1].position.lerp(new THREE.Vector3(1.5,1.5,0),0.05);
-    camera.position.lerp(new THREE.Vector3(0,2,7),0.05);
-    camera.lookAt(0,1,0);
-  }
-
-  composer.render();
-  controls.update();
-}
-animate();
 </script>
 </body>
 </html>
